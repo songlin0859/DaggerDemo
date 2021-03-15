@@ -60,3 +60,10 @@ override fun onCreate(savedInstanceState: Bundle?) {
         findViewById<TextView>(R.id.textView).text = "name=${user.name}, age=${user.age}"
     }
 ```
+
+3. 注解 @Module @Component @Provides
+对于有些类 构造方法是有参的 或者类似第三方jar中提供的 没法直接使用@Inject对构造方法进行标注 就需要用到@Provides
+
+4. @Qulifier
+
+5. @Scope & 单例

@@ -5,6 +5,11 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 import com.sl.daggerdemo.anno.ActivityScope;
+import com.sl.daggerdemo.anno.Student;
+import com.sl.daggerdemo.anno.Teacher;
+import com.sl.daggerdemo.bean.Persion;
+import com.sl.daggerdemo.bean.Stu;
+import com.sl.daggerdemo.bean.Tea;
 
 import javax.inject.Singleton;
 
@@ -30,5 +35,17 @@ public class AppModule {
     Gson provideGson(){
         Log.w("AppModule","provideGson");
         return new Gson();
+    }
+
+    @Teacher
+    @Provides
+    Persion provideTeacher(){
+        return new Tea();
+    }
+
+    @Student
+    @Provides
+    Persion provideStudent(){
+        return new Stu();
     }
 }

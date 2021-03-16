@@ -4,6 +4,11 @@ import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import com.google.gson.Gson
+import com.sl.daggerdemo.anno.Student
+import com.sl.daggerdemo.anno.Teacher
+import com.sl.daggerdemo.bean.Persion
+import com.sl.daggerdemo.bean.Stu
+import com.sl.daggerdemo.bean.Tea
 import com.sl.daggerdemo.bean.User
 import com.sl.daggerdemo.extension.getAppComponent
 import kotlinx.android.synthetic.main.activity_main.*
@@ -23,6 +28,11 @@ class MainActivity : AppCompatActivity() {
     lateinit var gson1: Gson
     @Inject
     lateinit var gson2: Gson
+
+    @Student
+    @Inject lateinit var stu: Persion
+    @Teacher
+    @Inject lateinit var tea: Persion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,5 +54,7 @@ class MainActivity : AppCompatActivity() {
          * 对于单例 只有调用一次provideGson
          * 2021-03-16 20:40:53.393 22957-22957/com.sl.daggerdemo W/AppModule: provideGson
          */
+
+        textView2.text = "stu = ${stu.say()}, tea = ${tea.say()}"
     }
 }

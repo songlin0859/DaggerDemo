@@ -27,4 +27,11 @@
         android:textSize="24sp"
         android:gravity="center"/>
 
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:gravity="center"/>
+
 </LinearLayout>

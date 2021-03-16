@@ -1,6 +1,9 @@
 package com.sl.daggerdemo.module;
 
 import android.content.Context;
+import android.util.Log;
+
+import com.google.gson.Gson;
 
 import dagger.Module;
 import dagger.Provides;
@@ -16,5 +19,11 @@ public class AppModule {
     @Provides
     Context provideContext(){
         return context;
+    }
+
+    @Provides
+    Gson provideGson(){
+        Log.w("AppModule","provideGson");
+        return new Gson();
     }
 }

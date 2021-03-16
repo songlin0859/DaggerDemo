@@ -5,6 +5,8 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 
+import javax.inject.Singleton;
+
 import dagger.Module;
 import dagger.Provides;
 
@@ -18,9 +20,11 @@ public class AppModule {
 
     @Provides
     Context provideContext(){
+        Log.w("AppModule","provideContext");
         return context;
     }
 
+    @Singleton
     @Provides
     Gson provideGson(){
         Log.w("AppModule","provideGson");

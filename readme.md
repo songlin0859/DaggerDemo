@@ -67,3 +67,220 @@ override fun onCreate(savedInstanceState: Bundle?) {
 4. @Qulifier
 
 5. @Scope & 单例
+@Singleton注解标记的provide方法 产生的实例是单例的（比例本例中的Gson）
+
+提供类的实例有两种途径 @Inject标记构造方法 或者 Module中通过@Provides提供provide方法
+实验了一下 
+```java
+    @Singleton
+    @Inject
+    public User(){
+
+    }
+```
+报错 `@Scope annotations are not allowed on @Inject constructors; annotate the class instead @Singleton`
+直接使用`@Singleton` 
+报错 `annot be provided without an @Inject constructor or an @Provides-annotated method.`
+差不多@Singleton只能用在module中的provide方法上
+
+如果给component依赖的module中的provide方法用了@Scope注解 那component也必须用相同的@Scope标记
+否则报错`AppComponent (unscoped) may not reference scoped bindings`
+
+Component如果用了@Scope标记 那Component依赖的module中的provide要么只能用相同的@Scope要么就不能用@Scope标记
+```java
+@Module
+public class AppModule {
+    private Context context;
+
+    public AppModule(Context context) {
+        this.context = context;
+    }
+
+    @ActivityScope
+    @Provides
+    Context provideContext(){
+        Log.w("AppModule","provideContext");
+        return context;
+    }
+
+    @Singleton
+    @Provides
+    Gson provideGson(){
+        Log.w("AppModule","provideGson");
+        return new Gson();
+    }
+}
+
+@Component(modules = {AppModule.class})
+@Singleton
+public interface AppComponent {
+    void inject(MainActivity activity);
+}
+```
+
+用了不同的@Scope会报错 
+***AppComponent scoped with @Singleton may not reference bindings with different scopes:***
+
+其实单例就是 Component 容器单例
+如果Module中的provide方法用了和Component相同的@Scope 则会提供Component相同生命周期的单例
+如果用了不同的@Scope 会报错！
+如果没有用@Scope 那就每次需要实例的时候都去调用Module中的provide方法获取实例
+
+/**
+ * 不是单例 每次都调用provideContext 但是因为Context都是ApplicationContext 所以还是相等
+ * 2021-03-16 20:40:53.393 22957-22957/com.sl.daggerdemo W/AppModule: provideContext
+ * 2021-03-16 20:40:53.393 22957-22957/com.sl.daggerdemo W/AppModule: provideContext
+ *
+ * 对于单例 只有调用一次provideGson
+ * 2021-03-16 20:40:53.393 22957-22957/com.sl.daggerdemo W/AppModule: provideGson
+ */
+ 
+通过代码中的MainActivity流程看注入原来
+首先会根据生成一个对应的MainActivity_MembersInjector
+getAppComponent().inject(this)就把需要的对象注入到MainActivity中
+```java
+
+public final class MainActivity_MembersInjector implements MembersInjector<MainActivity> {
+
+  @InjectedFieldSignature("com.sl.daggerdemo.MainActivity.user")
+  public static void injectUser(MainActivity instance, User user) {
+    instance.user = user;
+  }
+
+  @InjectedFieldSignature("com.sl.daggerdemo.MainActivity.ctx")
+  public static void injectCtx(MainActivity instance, Context ctx) {
+    instance.ctx = ctx;
+  }
+
+  @InjectedFieldSignature("com.sl.daggerdemo.MainActivity.ctx1")
+  public static void injectCtx1(MainActivity instance, Context ctx1) {
+    instance.ctx1 = ctx1;
+  }
+
+  @InjectedFieldSignature("com.sl.daggerdemo.MainActivity.gson1")
+  public static void injectGson1(MainActivity instance, Gson gson1) {
+    instance.gson1 = gson1;
+  }
+
+  @InjectedFieldSignature("com.sl.daggerdemo.MainActivity.gson2")
+  public static void injectGson2(MainActivity instance, Gson gson2) {
+    instance.gson2 = gson2;
+  }
+}
+
+public final class DaggerAppComponent implements AppComponent {
+
+  @Override
+  public void inject(MainActivity activity) {
+    injectMainActivity(activity);
+  }
+
+  private MainActivity injectMainActivity(MainActivity instance) {
+    MainActivity_MembersInjector.injectUser(instance, new User());
+    MainActivity_MembersInjector.injectCtx(instance, AppModule_ProvideContextFactory.provideContext(appModule));
+    MainActivity_MembersInjector.injectCtx1(instance, AppModule_ProvideContextFactory.provideContext(appModule));
+    MainActivity_MembersInjector.injectGson1(instance, provideGsonProvider.get());
+    MainActivity_MembersInjector.injectGson2(instance, provideGsonProvider.get());
+    return instance;
+  }
+}
+
+```
+
+注入的关键方法
+```java
+private MainActivity injectMainActivity(MainActivity instance) {
+    MainActivity_MembersInjector.injectUser(instance, new User());
+    MainActivity_MembersInjector.injectCtx(instance, AppModule_ProvideContextFactory.provideContext(appModule));
+    MainActivity_MembersInjector.injectCtx1(instance, AppModule_ProvideContextFactory.provideContext(appModule));
+    MainActivity_MembersInjector.injectGson1(instance, provideGsonProvider.get());
+    MainActivity_MembersInjector.injectGson2(instance, provideGsonProvider.get());
+    return instance;
+  }
+```
+
+User是通过构造方法添加@Inject这里是直接new User
+ctx ctx1 都通过AppModule_ProvideContextFactory.provideContext(appModule)提供实例
+```java
+public final class AppModule_ProvideContextFactory implements Factory<Context> {
+  private final AppModule module;
+
+  public AppModule_ProvideContextFactory(AppModule module) {
+    this.module = module;
+  }
+
+  public static Context provideContext(AppModule instance) {
+    return Preconditions.checkNotNullFromProvides(instance.provideContext());
+  }
+}
+```
+ 其实每次通过com.sl.daggerdemo.module.AppModule.provideContext方法获取一个实例
+ 
+ gson1 gson2 通过provideGsonProvider.get()获取
+ ```java
+public final class DaggerAppComponent implements AppComponent {
+  private final AppModule appModule;
+
+  private Provider<Gson> provideGsonProvider;
+
+  private DaggerAppComponent(AppModule appModuleParam) {
+    this.appModule = appModuleParam;
+    initialize(appModuleParam);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void initialize(final AppModule appModuleParam) {
+    this.provideGsonProvider = DoubleCheck.provider(AppModule_ProvideGsonFactory.create(appModuleParam));
+  }
+} 
+```
+provideGsonProvider在DaggerAppComponent构造方法中初始化
+
+DoubleCheck.provider(AppModule_ProvideGsonFactory.create(appModuleParam));
+AppModule_ProvideGsonFactory.create获取一个AppModule_ProvideGsonFactory实例
+```java
+public static <P extends Provider<T>, T> Provider<T> provider(P delegate) {
+    checkNotNull(delegate);
+    if (delegate instanceof DoubleCheck) {
+      /* This should be a rare case, but if we have a scoped @Binds that delegates to a scoped
+       * binding, we shouldn't cache the value again. */
+      return delegate;
+    }
+    return new DoubleCheck<T>(delegate);
+  }
+```
+
+```java
+public final class DoubleCheck<T> implements Provider<T>, Lazy<T> {
+  private static final Object UNINITIALIZED = new Object();
+
+  private volatile Provider<T> provider;
+  private volatile Object instance = UNINITIALIZED;
+
+  private DoubleCheck(Provider<T> provider) {
+    assert provider != null;
+    this.provider = provider;
+  }
+
+  @SuppressWarnings("unchecked") // cast only happens when result comes from the provider
+  @Override
+  public T get() {
+    Object result = instance;
+    if (result == UNINITIALIZED) {
+      synchronized (this) {
+        result = instance;
+        if (result == UNINITIALIZED) {
+          result = provider.get();
+          instance = reentrantCheck(instance, result);
+          /* Null out the reference to the provider. We are never going to need it again, so we
+           * can make it eligible for GC. */
+          provider = null;
+        }
+      }
+    }
+    return (T) result;
+  }
+}
+```
+其实就是通过dagger.internal.DoubleCheck.get获取一个实例（单例）
+ 

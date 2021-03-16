@@ -1,6 +1,7 @@
 package com.sl.daggerdemo.bean;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 public class User {
     private String name = "sl";
